@@ -1,7 +1,7 @@
 # KDStab
 This is a Beacon Object File combined implementation of Yaxser's Backstab and pwn1sher's KillDefender for use with Cobalt Strike. 
 
-![image](https://user-images.githubusercontent.com/91164728/157600560-ebc12f11-a74d-47aa-a6a4-9636e81bb24b.png)
+![image](https://user-images.githubusercontent.com/91164728/157608785-d0c93a90-78e1-4031-b08c-206985010554.png)
 
 # Introduction
 KDStab is a post-explotiation tool to defeat Windows Defender (in theory it could work for other solutions as well but have not tested) so that other post-ex tools may be used without as much fear of detection. It leverages Backstab and KillDefender in order to accomplish this, both of which are called when appropriate by the kdstab Cobalt Strike command.
