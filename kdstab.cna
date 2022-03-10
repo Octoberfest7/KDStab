@@ -56,9 +56,9 @@ Usage: kdstab </NAME:processname.exe || /PID:processpid> Action [options]
 
 	Options(For use ONLY with /KILL||/LIST||/CLOSE):
 
-	/DRIVER,           Specify path to where ProcExp will be extracted
+	/DRIVER,           Specify path to where the ProcExp driver will be extracted
 	/SERVICE,          Specify service name registry key
-	/UNLOAD,           (attempt to) Unload ProcExp driver
+	/UNLOAD,           (attempt to) Unload ProcExp driver (not usually necessary as tool always attemps to clean up driver)
 
 Notes:
 	Obvious usage is to /STRIP MsMpEng.exe of privileges so that post-ex tools may be ran/dropped to disk without worry of AV picking them up.
