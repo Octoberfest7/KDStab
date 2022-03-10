@@ -1,32 +1,42 @@
 # KDStab
 This is a Beacon Object File combined implementation of Yaxser's Backstab and pwn1sher's KillDefender for use with Cobalt Strike. 
+
 ![image](https://user-images.githubusercontent.com/91164728/157600560-ebc12f11-a74d-47aa-a6a4-9636e81bb24b.png)
 
 # Introduction
-KDStab is a post-explotiation tool to defeat Windows Defender (in theory it could work for other solutions as well but have not tested) so that other post-ex tools may be used without as much fear of detection. It levarages Backstab and KillDefender in order to accomplish this, both of which are called when appropriate by the kdstab Cobalt Strike command.
+KDStab is a post-explotiation tool to defeat Windows Defender (in theory it could work for other solutions as well but have not tested) so that other post-ex tools may be used without as much fear of detection. It leverages Backstab and KillDefender in order to accomplish this, both of which are called when appropriate by the kdstab Cobalt Strike command.
 
 KDStab has been tested successfully on x64 Windows 10, Windows 11, and Server 2019. 
 
 KDStab requires Administrator or System level access.
 
 Primary functions:
-  -Enumerate the integrity of a process
-  -Strip a process of its privileges and set its integrity to Untrusted
-  -Kill a PPL protected process
-  -List the handles for a PPL protected process
-  -Close a specific handle for a PPL protected process
+
+  1. Enumerate the integrity of a process
+  
+  2. Strip a process of its privileges and set its integrity to Untrusted
+  
+  3. Kill a PPL protected process
+  
+  4. List the handles for a PPL protected process
+  
+  5. Close a specific handle for a PPL protected process
 
 # Examples
 Check the integrity level of a process
+
 ![image](https://user-images.githubusercontent.com/91164728/157605672-d4a491e9-c8a8-4215-aef3-eaa99deb30d6.png)
 
-Strip a process of its privileges and set its token to Untrusted:
+Strip a process of its privileges and set its token to Untrusted
+
 ![image](https://user-images.githubusercontent.com/91164728/157605903-f2df0b50-d233-45b7-b092-6fbb6022d95c.png)
 
-Result of /STRIP command:
+Result of /STRIP command
+
 ![image](https://user-images.githubusercontent.com/91164728/157606113-36256c63-59ef-4e15-8f18-ef3dc7ecc34f.png)
 
-Kill a PPL protected process:
+Kill a PPL protected process
+
 ![image](https://user-images.githubusercontent.com/91164728/157605876-4572bf6e-d1f2-4c1b-ac23-d5f10f863e8b.png)
 
 # Background
@@ -44,7 +54,7 @@ I am both new to C/C++ as well as to writing BOF's and I learned a lot during th
 
 # Changes and Programming Notes:
 
-A few notable changes were made to the source code of the tools and certain programattic choices were made that will be mentioned here:
+A few notable changes were made to the source code of the tools and certain programmatic choices were made that will be mentioned here:
 
   1. The ProcExp driver is no longer stored/loaded as a resource, it is a hardcoded byte array in backstab_src/resource.c
 
@@ -52,13 +62,15 @@ A few notable changes were made to the source code of the tools and certain prog
 
   3. The KillDefender POC fails when the user is not System; I added a snippet to enumerate the running user and get system through impersonation of Winlogon's token if need be.
 
-  4. Backstab uses enough different API's and C calls that CobaltStrike wasn't able to manage resolving all of the dynamic function resolution- trustedsec to the rescue! I implemented their dynamic function resolution to supplement CS's so that all of the necessary API's could be called.
+  4. KillDefender was modified to allow users to specify which process to target; additionally a "Check" mode was added to enumerate the integrity level of a process (which can confirm that a process was successfully stripped of its privileges and integrity).
 
-  5. The original Backstab has several switch/case statements that caused problems during the port, so they were replaced with if/else statements.  Additionally pretty much all global variables were eliminated for similar reasons.
+  5. Backstab uses enough different API's and C calls that Cobalt Strike wasn't able to manage resolving all of the dynamic function resolution- trustedsec to the rescue! I implemented their dynamic function resolution to supplement CS's so that all of the necessary API's could be called.
 
-  6. I know it is odd that one tool was written for Visual Studio and the other for GCC; this is a casualty of me struggling to successfully port these and having lots of growing pains along the way.  Future tools should hopefully benefit from a lot of the lessions that I learned along the road here.
+  6. The original Backstab has several switch/case statements that caused problems during the port, so they were replaced with if/else statements.  Additionally pretty much all global variables were eliminated for similar reasons.
 
-  7. Both KillDefender_bof and Backstab_bof exist as standalone repos. NOTE THAT CODE IS DIFFERENT BETWEEN THE STANDALONE REPOS AND THIS TOOL. This was done in order to make them more flexible and able to integrate into a single package.
+  7. I know it is odd that one tool was written for Visual Studio and the other for GCC; this is a casualty of me struggling to successfully port these and having lots of growing pains along the way.  Future tools should hopefully benefit from a lot of the lessons that I learned along the road here.
+
+  8. Both KillDefender_bof and Backstab_bof exist as standalone repos. NOTE THAT CODE IS DIFFERENT BETWEEN THE STANDALONE REPOS AND THIS TOOL. This was done in order to make them more flexible and able to integrate into a single package.
 
 # To Compile:
 I have not tried to compile either tool for x86; if you really need a version of this for that I will leave it to you to figure it out.
