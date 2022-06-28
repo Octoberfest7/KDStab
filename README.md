@@ -1,4 +1,8 @@
 # KDStab
+
+**6/28/2022**: Microsoft has rolled out a patch that prevents opening a handle to the MsMpEng.exe token, and as such the KillDefender portion of this tool no longer works. Backstab should still work. Not sure the patch ID, may work on older unpatched systems.  Verified on Win10 21H2 and Win11. 
+
+
 This is a Beacon Object File combined implementation of Yaxser's Backstab and pwn1sher's KillDefender for use with Cobalt Strike. 
 
 ![image](https://user-images.githubusercontent.com/91164728/157608940-2dc938e5-fa50-41b0-87b7-f722644a805f.png)
