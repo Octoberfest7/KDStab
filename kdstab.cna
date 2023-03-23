@@ -26,21 +26,14 @@ sub ops {
 
 beacon_command_register(
 	"kdstab",
-	"Check a processes token integrity
-	 Strip a processes token of all privileges and set integrity to untrusted
-	 List a PPL protected processes handles
-	 Kill a specific handle to a PPL protected process
-	 Kill a PPL protected process",
+	"Manipulate process tokens and kill PPL protected processes.",
 	"
 Command: kdstab
-Summary: This command allows an operator to manipulate process tokens and kill PPL protected processes.
-
-Credits:
-	Original tools:
-		KillDefender by pwn1sher
-		Backstab by Yaxser
-	BOF examples + templates:
-		CS-Situational-Awareness-BOF by trustedsec
+Summary: Check a processes token integrity
+	Strip a processes token of all privileges and set integrity to untrusted
+	List a PPL protected processes handles
+	Kill a specific handle to a PPL protected process
+	Kill a PPL protected process
 
 Usage: kdstab </NAME:processname.exe || /PID:processpid> Action [options]
 	/NAME,             Choose process by name, including the .exe suffix
@@ -76,6 +69,13 @@ Examples:
 	kdstab /NAME:cyserver.exe /CLOSE:E4C       				[Close handle E4C of cyserver]
 	kdstab /NAME:cyserver.exe /LIST        	 			[list all handles of cyserver]
 	kdstab /PID:4326 /KILL /DRIVER:c:\\driver.sys /SERVICE:MyService    	[kill protected process with PID 4326, name service in registry MyService, extract ProcExp driver to C:\\driver.sys]
+	
+Credits:
+	Original tools:
+		KillDefender by pwn1sher
+		Backstab by Yaxser
+	BOF examples + templates:
+		CS-Situational-Awareness-BOF by trustedsec
 "
 );
 
